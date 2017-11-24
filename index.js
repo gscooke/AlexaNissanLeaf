@@ -24,17 +24,49 @@ function buildBatteryStatus(battery) {
 	const milesPerMeter = 0.000621371;
 	let response = `You have ${Math.floor((battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount / battery.BatteryStatusRecords.BatteryStatus.BatteryCapacity) * 100)}% battery which will get you approximately ${Math.floor(battery.BatteryStatusRecords.CruisingRangeAcOn * milesPerMeter)} miles. `;
 
-	if (battery.BatteryStatusRecords.PluginState == "CONNECTED") {
+	if (battery.BatteryStatusRecords.BatteryStatus.BatteryChargingStatus != "NOT_CHARGING") {
+		
+		if (battery.BatteryStatusRecords.hasOwnProperty("TimeRequiredToFull200_6kW")) {
+			response += buildChargeTimeResponse(battery.BatteryStatusRecords.TimeRequiredToFull200_6kW.HourRequiredToFull, battery.BatteryStatusRecords.TimeRequiredToFull200_6kW.MinutesRequiredToFull);
+		} else if (battery.BatteryStatusRecords.hasOwnProperty("TimeRequiredToFull200")) {
+			response += buildChargeTimeResponse(battery.BatteryStatusRecords.TimeRequiredToFull200.HourRequiredToFull, battery.BatteryStatusRecords.TimeRequiredToFull200.MinutesRequiredToFull);
+		} else if (battery.BatteryStatusRecords.hasOwnProperty("TimeRequiredToFull")) {
+			response += buildChargeTimeResponse(battery.BatteryStatusRecords.TimeRequiredToFull.HourRequiredToFull, battery.BatteryStatusRecords.TimeRequiredToFull.MinutesRequiredToFull);
+		} else {
+			response += "The car is plugged in and charging";
+		}
+	} else if (battery.BatteryStatusRecords.PluginState == "CONNECTED") {
 		response += "The car is plugged in";
 	} else {
 		response += "The car is not plugged in";
 	}
 
-	if (battery.BatteryStatusRecords.BatteryStatus.BatteryChargingStatus != "NOT_CHARGING") {
-		response += " and charging";
+	return response + ".";
+}
+
+function buildChargeTimeResponse(hoursToFull, minutesToFull) {
+	let response = "The car will be fully charged in ";
+
+	if (hoursToFull > 0) {
+		response += hoursToFull;
+		response += " hour";
+		if (hoursToFull > 1) {
+			response += "s";
+		}
+		if (minutesToFull > 0) {
+			response += " and "
+		}
 	}
 
-	return response + ".";
+	if (minutesToFull > 0) {
+		response += minutesToFull;
+		response += " minute";
+		if (minutesToFull > 1) {
+			response += "s";
+		}
+	}
+
+	return response;
 }
 
 // Helper to build the text response for charging status.
@@ -61,6 +93,21 @@ function buildConnectedStatus(connected) {
 	return response;
 }
 
+// Helper to build the text response for battery condition status.
+function buildBatteryConditionStatus(connected) {
+	let response = "Your car has ";
+	let maxBars = 12;
+	
+	if (connected.BatteryStatusRecords.BatteryStatus.BatteryCapacity > 200) {
+		maxBars = Math.round((connected.BatteryStatusRecords.BatteryStatus.BatteryCapacity / 20) * 10);
+		maxBars = maxBars / 10;
+	}
+		
+	response += maxBars + " bars remaining.";
+	
+	return response;
+}
+
 // Handling incoming requests
 exports.handler = (event, context) => {
 		
@@ -82,9 +129,9 @@ exports.handler = (event, context) => {
 			if (event.resources && event.resources[0] == process.env.scheduledEventArn) {
 				// Scheduled data update
 				console.log("Beginning scheduled update");
-				car.getBatteryStatus(
-					() => console.log("Scheduled update requested"),
-					() => console.log("Scheduled update failed")
+				car.sendUpdateCommand(
+					() => console.log("Scheduled battery update requested"),
+					() => console.log("Scheduled battery update failed")
 				);
 				return;
 			}
@@ -95,7 +142,7 @@ exports.handler = (event, context) => {
 		// Click on the skill and look for the "Application ID" field.
 		// Set the applicationId as an environment variable or hard code it here.
 		if(event.session.application.applicationId !== process.env.applicationId) {
-			sendResponse("Invalid Application ID", "You are not allowed to use this service.");
+			sendResponse("Invalid Application ID", "You are not allowed to use this service. Application ID provided was " + event.session.application.applicationId);
 			return;
 		}
 
@@ -162,6 +209,12 @@ exports.handler = (event, context) => {
 					car.getBatteryStatus(
 						response => sendResponse("Car Connected Status", buildConnectedStatus(response)),
 						() => sendResponse("Car Connected Status", "Unable to get car battery status.")
+					);
+					break;
+				case "BatteryConditionIntent":
+					car.getBatteryStatus(
+						response => sendResponse("Car Battery Condition Status", buildBatteryConditionStatus(response)),
+						() => sendResponse("Car Battery Condition Status", "Unable to get battery condition status.")
 					);
 					break;
 				case "AMAZON.HelpIntent":

@@ -88,3 +88,6 @@ ConnectedIntent currently plugged in
 StartChargingIntent charge
 StartChargingIntent charge now
 StartChargingIntent start charging
+BatteryConditionIntent what the condition of the battery is
+BatteryConditionIntent how's the battery
+BatteryConditionIntent how many bars it has left
