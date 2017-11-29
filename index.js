@@ -243,12 +243,18 @@ exports.handler = (event, context) => {
 };
 
 function handleScheduledUpdate(success, battery, event) {
+	if (process.env.debugLogging)
+		console.log(event);
+
 	if (success) {
 		if (battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount == event.currentBatteryLevel) {
 			let minutesToAdd = event.timesRunInState >= process.env.slowUpdateThreshold ? process.env.dormantUpdateTime : process.env.slowUpdateTime;
 
+			if (process.env.debugLogging)
+				console.log("Slow update - minutes to add = " + minutesToAdd);
+
 			setCloudWatchSchedule(minutesToAdd);
-			setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, process.env.slowUpdateTime, event.timesRunInState);
+			setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, minutesToAdd, event.timesRunInState);
 		} else {
 			setCloudWatchSchedule(process.env.slowUpdateTime);
 			setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, process.env.fastUpdateTime, 0);
@@ -292,6 +298,9 @@ function setCloudWatchSchedule(minutesToAdd) {
         ScheduleExpression: scheduleExpression
 	};
 	
+	if (process.env.debugLogging)
+		console.log(params);
+	
 	// Set the schedule
     cloudwatchevents.putRule(params, function(err, data) {
         if (err) {
@@ -329,6 +338,9 @@ function setCloudWatchTrigger(newBatteryState, minutesToAdd, timesRunInState) {
             }
         ]
 	};
+
+	if (process.env.debugLogging)
+		console.log(params);
 
 	cloudwatchevents.putTargets(params, function(err, data) {
         if (err) {

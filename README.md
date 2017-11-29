@@ -73,3 +73,7 @@ These are the environment variables that need to be defined:
 : Identity of the CloudWatch scheduled event Target containing the event settings, e.g. _arn:aws:lambda:us-east-1:123123123123:function:scheduledNissanLeafUpdate_. You can use the getCloudWatchRuleDetails function to find this information
 * **scheduleEventTargetId** : _string_
 : Id of the CloudWatch scheduled event Target containing the event settings, e.g. _Id123123123123_. You can use the getCloudWatchRuleDetails function to find this information
+
+## Other:
+* **debugLogging** : _boolean_
+: Creates additional logging entries when set to true
