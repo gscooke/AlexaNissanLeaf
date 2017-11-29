@@ -59,8 +59,6 @@ function sendRequest(action, requestData, successCallback, failureCallback) {
 			}
 		});
 	});
-	
-	console.log("Request Finished - " + action);
 
 	req.write(requestData);
 	req.end();

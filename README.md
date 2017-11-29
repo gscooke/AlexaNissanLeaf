@@ -39,4 +39,35 @@ These are examples of some of the interactions with Alexa:
 
 # Scheduled Events
 The script supports updates via a scheduled event from AWS CloudWatch. I have modified this so that it uses the SendUpdate command which probably uses more power but seems to keep the data nicely up to date.
-To compensate for the increased load on the car, I have also introduced the ability to modify the schedule of the AWS Cloudwatch event so that whenever battery changes are detected, the schedule is kept fast (user definable) but if the battery state doesn't change between requests, a slower schedule is used.
+To compensate for the increased load on the car, I have also introduced the ability to modify the schedule of the AWS Cloudwatch event so that whenever battery changes are detected, the schedule is kept fast (user definable) but if the battery state doesn't change between requests, a slower schedule is used. Once the slow schedule updates have gone past a certain threshold, an even slower schedule is used.
+
+# Lambda Environment Variables
+These are the environment variables that need to be defined:
+
+## Schedule related:
+* fastUpdateTime: number
+Time in minutes between updates whent the battery state is changing, or Alexa interactions occur, eg. 15
+* slowUpdateTime: number
+Time in minutes between updates when the battery state stops changing, eg. 60
+* slowUpdateThreshold: number
+Number of times the slow update should happen before moving on to the dormant update time, eg. 5
+* dormantUpdateTime: number
+Time in minutes between updates when the slow update threshold value has passed, eg. 360
+* scheduledEventArn: arn
+Identity of the CloudWatch scheduled event that will perform the regular updates, e.g. arn:aws:events:us-east-1:123123123:rule/scheduledNissanLeafUpdate
+* scheduledEventName: string
+Name of the CloudWatch scheduled event that will perform the regular updates, e.g. scheduledNissanLeafUpdate
+* scheduledEventFunctionArn: arn
+Identity of the CloudWatch scheduled event Target containing the event settings, e.g. arn:aws:lambda:us-east-1:123123123123:function:scheduledNissanLeafUpdate. You can use the getCloudWatchRuleDetails function to find this information
+* scheduleEventTargetId: string
+Id of the CloudWatch scheduled event Target containing the event settings, e.g. Id123123123123. You can use the getCloudWatchRuleDetails function to find this information
+
+## General settings:
+* regioncode: string
+Possible value are NE (Europe), NNA (North America) and NCI (Canada)
+* applicationId: arn
+applicationId passed in from your Alexa skill definition
+* username: string
+Your NissanConnect username or email address
+* password: string
+Your NissanConnect account password
