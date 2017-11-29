@@ -41,6 +41,7 @@ These are examples of some of the interactions with Alexa:
 The script supports updates via a scheduled event from AWS CloudWatch. I have modified this so that it uses the SendUpdate command which probably uses more power but seems to keep the data nicely up to date.
 
 To compensate for the increased load on the car, I have also introduced the ability for the script to modify the schedule of the AWS Cloudwatch event so that whenever battery changes are detected, the schedule is kept fast, but if the battery state doesn't change between requests, a slower schedule is used. Once the slow schedule updates have gone past a certain threshold, an even slower schedule is used.
+In order to use this mechanism, two requests are made from Nissan Connect so I have had to increase my Timeout.
 
 # Lambda Environment Variables
 These are the environment variables that need to be defined:
