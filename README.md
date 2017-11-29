@@ -44,30 +44,30 @@ To compensate for the increased load on the car, I have also introduced the abil
 # Lambda Environment Variables
 These are the environment variables that need to be defined:
 
-## Schedule related:
-* fastUpdateTime: number
-Time in minutes between updates whent the battery state is changing, or Alexa interactions occur, eg. 15
-* slowUpdateTime: number
-Time in minutes between updates when the battery state stops changing, eg. 60
-* slowUpdateThreshold: number
-Number of times the slow update should happen before moving on to the dormant update time, eg. 5
-* dormantUpdateTime: number
-Time in minutes between updates when the slow update threshold value has passed, eg. 360
-* scheduledEventArn: arn
-Identity of the CloudWatch scheduled event that will perform the regular updates, e.g. arn:aws:events:us-east-1:123123123:rule/scheduledNissanLeafUpdate
-* scheduledEventName: string
-Name of the CloudWatch scheduled event that will perform the regular updates, e.g. scheduledNissanLeafUpdate
-* scheduledEventFunctionArn: arn
-Identity of the CloudWatch scheduled event Target containing the event settings, e.g. arn:aws:lambda:us-east-1:123123123123:function:scheduledNissanLeafUpdate. You can use the getCloudWatchRuleDetails function to find this information
-* scheduleEventTargetId: string
-Id of the CloudWatch scheduled event Target containing the event settings, e.g. Id123123123123. You can use the getCloudWatchRuleDetails function to find this information
-
 ## General settings:
-* regioncode: string
-Possible value are NE (Europe), NNA (North America) and NCI (Canada)
-* applicationId: arn
-applicationId passed in from your Alexa skill definition
-* username: string
-Your NissanConnect username or email address
-* password: string
-Your NissanConnect account password
+* **regioncode**: _string_
+: Possible value are _NE_ (Europe), _NNA_ (North America) and _NCI_ (Canada)
+* **applicationId**: _amazon resource name_
+: applicationId passed in from your Alexa skill definition, eg. _amzn1.ask.skill.eb25aa45-e137-4482-be5a-741ff7a28224_
+* **username**: _string_
+: Your NissanConnect username or email address
+* **password**: _string_
+: Your NissanConnect account password
+
+## Schedule related:
+* **fastUpdateTime**: _number_
+: Time in minutes between updates whent the battery state is changing, or Alexa interactions occur, eg. _15_
+* **slowUpdateTime**: _number_
+: Time in minutes between updates when the battery state stops changing, eg. _60_
+* **slowUpdateThreshold**: _number_
+: Number of times the slow update should happen before moving on to the dormant update time, eg. _5_
+* **dormantUpdateTime**: _number_
+: Time in minutes between updates when the slow update threshold value has passed, eg. _360_
+* **scheduledEventArn**: _amazon resource name_
+: Identity of the CloudWatch scheduled event that will perform the regular updates, e.g. _arn:aws:events:us-east-1:123123123:rule/scheduledNissanLeafUpdate_
+* **scheduledEventName**: _string_
+: Name of the CloudWatch scheduled event that will perform the regular updates, e.g. _scheduledNissanLeafUpdate_
+* **scheduledEventFunctionArn**: _amazon resource name_
+: Identity of the CloudWatch scheduled event Target containing the event settings, e.g. _arn:aws:lambda:us-east-1:123123123123:function:scheduledNissanLeafUpdate_. You can use the getCloudWatchRuleDetails function to find this information
+* **scheduleEventTargetId**: _string_
+: Id of the CloudWatch scheduled event Target containing the event settings, e.g. _Id123123123123_. You can use the getCloudWatchRuleDetails function to find this information
