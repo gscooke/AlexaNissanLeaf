@@ -1,5 +1,7 @@
 "use strict";
 
+var AWS = require("aws-sdk");
+
 // Require the leaf.js file with specific vehicle functions.
 let car = require("./leaf");
 
@@ -108,6 +110,35 @@ function buildBatteryConditionStatus(connected) {
 	return response;
 }
 
+function rescheduleUpdate(batteryRemainingAmount, event) {
+	console.log("Updating schedule")
+
+	if (batteryRemainingAmount == event.currentBatteryLevel)
+	{
+		// Battery status has not changed - set to slow updates
+		console.log("Set slow schedule");
+		rescheduleCloudWatchEvent(process.env.slowUpdateTime, batteryRemainingAmount, event);
+	} else {
+		// Battery status is changing - set to fast updates
+		console.log("Set fast schedule");
+		rescheduleCloudWatchEvent(process.env.fastUpdateTime, batteryRemainingAmount, event);
+	} 
+}
+
+function handleScheduledUpdate(success, battery, event) {
+	if (success) {
+		rescheduleUpdate(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, event)
+	} else {
+		console.log("Could not get battery state, force fast update");
+		rescheduleUpdate(-1, event);
+	}
+
+	car.sendUpdateCommand(
+		() => console.log("Scheduled battery update requested"),
+		() => console.log("Scheduled battery update failed")
+	);
+}
+
 // Handling incoming requests
 exports.handler = (event, context) => {
 		
@@ -122,21 +153,28 @@ exports.handler = (event, context) => {
 
 	try {
 		// Check if this is a CloudWatch scheduled event.
-		if (event.source == "aws.events" && event["detail-type"] == "Scheduled Event") {
+		// if ((event.source == "aws.events" && event["detail-type"] == "Scheduled Event") || 
+		if (event.mechanism && event.mechanism == 'scheduledUpdate') {
 			console.log(event);
-			// The environmnet variable scheduledEventArn should have a value as shown in the trigger configuration for this lambda function,
+			// The en{vironmnet variable scheduledEventArn should have a value as shown in the trigger configuration for this lambda function,
 			// e.g. "arn:aws:events:us-east-1:123123123:rule/scheduledNissanLeafUpdate",
-			if (event.resources && event.resources[0] == process.env.scheduledEventArn) {
-				// Scheduled data update
+			// if (event.resources && event.resources[0] == process.env.scheduledEventArn)  {
 				console.log("Beginning scheduled update");
-				car.sendUpdateCommand(
-					() => console.log("Scheduled battery update requested"),
-					() => console.log("Scheduled battery update failed")
+				// Update the schedule
+				car.getBatteryStatus(
+					response => handleScheduledUpdate(true, response, event),
+					() => handleScheduledUpdate(false, null, event)
 				);
+
+				// Scheduled data update
+				// car.sendUpdateCommand(
+				// 	() => console.log("Scheduled battery update requested"),
+				// 	() => console.log("Scheduled battery update failed")
+				// );
 				return;
-			}
-			sendResponse("Invalid Scheduled Event", "This service is not configured to allow the source of this scheduled event.");
-			return;
+			// }
+			// sendResponse("Invalid Scheduled Event", "This service is not configured to allow the source of this scheduled event.");
+			// return;
 		}
 		// Verify the person calling the script. Get your Alexa Application ID here: https://developer.amazon.com/edw/home.html#/skills/list
 		// Click on the skill and look for the "Application ID" field.
@@ -234,3 +272,86 @@ exports.handler = (event, context) => {
 		sendResponse("Error Occurred", "An error occurred. Fire the programmer! " + err.message);
 	}
 };
+
+function rescheduleCloudWatchEvent(minutesToAdd, newBatteryState, event) {
+	var cloudwatchevents = new AWS.CloudWatchEvents();
+	var currentTime = new Date().getTime(); // UTC Time
+	var nextTime = dateAdd(currentTime, "minute", minutesToAdd);
+	var nextMinutes = nextTime.getMinutes();
+	var nextHours = nextTime.getHours();
+	
+	// var ruleParams = {
+	// 	"Rule": process.env.scheduledEventName
+	// };
+	// cloudwatchevents.listTargetsByRule(ruleParams, function(err, data) {
+    //     if (err) {
+    //         console.log(err, err.stack);  
+    //     }
+    //     else {
+    //         console.log(data);
+    //     }
+	// });
+	
+	var timesRunInState = event.timesRunInState;
+	if (event.interval == minutesToAdd) {
+		timesRunInState += 1;
+	} else {
+		timesRunInState = 0;
+	}
+
+	// Build the input parameters
+	var ruleDetails = {
+        Rule: process.env.scheduledEventName,
+        Targets: [ 
+            {
+				Id: process.env.scheduleEventTargetId,
+                Arn: process.env.scheduledEventFunctionArn,
+                Input: '{ "mechanism": "scheduledUpdate", "currentBatteryLevel": ' + newBatteryState + ', "interval": ' + minutesToAdd + ', "timesRunInState": ' + timesRunInState + ' }'
+            }
+        ]
+	};
+	
+	console.log(ruleDetails);
+
+	// Build the new schedule
+	var scheduleExpression = "cron(" + nextMinutes + " " + nextHours + " * * ? *)";
+    var params = {
+        Name: process.env.scheduledEventName,
+        ScheduleExpression: scheduleExpression
+	};
+	
+	// Set the schedule
+    cloudwatchevents.putRule(params, function(err, data) {
+        if (err) {
+            console.log(err, err.stack);  
+        }
+        else {
+            console.log(data);
+        }
+	})
+	// Set the targets
+    cloudwatchevents.putTargets(ruleDetails, function(err, data) {
+        if (err) {
+            console.log(err, err.stack);  
+        }
+        else {
+            console.log(data);
+        }
+    })
+}
+
+var dateAdd = function(date, interval, units) {
+    var ret = new Date(date); // don't change original date
+    switch(interval.toLowerCase()) {
+        case 'year'   :  ret.setFullYear(ret.getFullYear() + units);  break;
+        case 'quarter':  ret.setMonth(ret.getMonth() + 3*units);  break;
+        case 'month'  :  ret.setMonth(ret.getMonth() + units);  break;
+        case 'week'   :  ret.setDate(ret.getDate() + 7*units);  break;
+        case 'day'    :  ret.setDate(ret.getDate() + units);  break;
+        case 'hour'   :  ret.setTime(ret.getTime() + units*3600000);  break;
+        case 'minute' :  ret.setTime(ret.getTime() + units*60000);  break;
+        case 'second' :  ret.setTime(ret.getTime() + units*1000);  break;
+        default       :  ret = undefined;  break;
+    }
+    return ret;
+}

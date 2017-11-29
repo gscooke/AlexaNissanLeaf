@@ -38,4 +38,5 @@ These are examples of some of the interactions with Alexa:
 * Alexa, ask my car to start charging
 
 # Scheduled Events
-THe script supports updates via a scheduled event from AWS CloudWatch. I have modified this so that it uses the SendUpdate command which probably uses more power but seems to keep the data nicely up to date
+The script supports updates via a scheduled event from AWS CloudWatch. I have modified this so that it uses the SendUpdate command which probably uses more power but seems to keep the data nicely up to date.
+To compensate for the increased load on the car, I have also introduced the ability to modify the schedule of the AWS Cloudwatch event so that whenever battery changes are detected, the schedule is kept fast (user definable) but if the battery state doesn't change between requests, a slower schedule is used.
