@@ -229,7 +229,9 @@ exports.handler = (event, context) => {
 					break;
 			}
 			// Whenever the user interacts with the service, schedule a fast update
-			setCloudWatchSchedule(process.env.fastUpdateTime);
+			if (process.env.hasOwnProperty("scheduledEventArn")) {
+				setCloudWatchSchedule(process.env.fastUpdateTime);
+			}
 		} else if (event.request.type === "SessionEndedRequest") {
 			exitCallback();
 		}
