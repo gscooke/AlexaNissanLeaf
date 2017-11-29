@@ -46,6 +46,7 @@ These are the environment variables that need to be defined:
 
 ## Schedule related:
 * fastUpdateTime: number
+
 Time in minutes between updates whent the battery state is changing, or Alexa interactions occur, eg. 15
 * slowUpdateTime: number
 Time in minutes between updates when the battery state stops changing, eg. 60
