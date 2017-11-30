@@ -55,11 +55,11 @@ function sendRequest(action, requestData, successCallback, failureCallback) {
 			if (json.status == 200) {
 				successCallback(respData && respData.length ? JSON.parse(respData) : null);
 			}else {
-				console.log(json);
+				console.log("Request to " + action + " was not successful");
 			}
 		});
 	});
-	
+
 	req.write(requestData);
 	req.end();
 }

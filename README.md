@@ -38,4 +38,42 @@ These are examples of some of the interactions with Alexa:
 * Alexa, ask my car to start charging
 
 # Scheduled Events
-THe script supports updates via a scheduled event from AWS CloudWatch. I have modified this so that it uses the SendUpdate command which probably uses more power but seems to keep the data nicely up to date
+The script supports updates via a scheduled event from AWS CloudWatch. I have modified this so that it uses the SendUpdate command which probably uses more power but seems to keep the data nicely up to date.
+
+To compensate for the increased load on the car, I have also introduced the ability for the script to modify the schedule of the AWS Cloudwatch event so that whenever battery changes are detected, the schedule is kept fast, but if the battery state doesn't change between requests, a slower schedule is used. Once the slow schedule updates have gone past a certain threshold, an even slower schedule is used.
+In order to use this mechanism, two requests are made from Nissan Connect so I have had to increase my Timeout.
+
+# Lambda Environment Variables
+These are the environment variables that need to be defined:
+
+## General settings:
+* **regioncode** : _string_
+: Possible value are _NE_ (Europe), _NNA_ (North America) and _NCI_ (Canada)
+* **applicationId** : _amazon resource name_
+: applicationId passed in from your Alexa skill definition, eg. _amzn1.ask.skill.eb25aa45-e137-4482-be5a-741ff7a28224_
+* **username** : _string_
+: Your NissanConnect username or email address
+* **password** : _string_
+: Your NissanConnect account password
+
+## Schedule related:
+* **fastUpdateTime** : _number_
+: Time in minutes between updates whent the battery state is changing, or Alexa interactions occur, eg. _15_
+* **slowUpdateTime** : _number_
+: Time in minutes between updates when the battery state stops changing, eg. _60_
+* **slowUpdateThreshold** : _number_
+: Number of times the slow update should happen before moving on to the dormant update time, eg. _5_
+* **dormantUpdateTime** : _number_
+: Time in minutes between updates when the slow update threshold value has passed, eg. _360_
+* **scheduledEventArn** : _amazon resource name_
+: Identity of the CloudWatch scheduled event that will perform the regular updates, e.g. _arn:aws:events:us-east-1:123123123:rule/scheduledNissanLeafUpdate_
+* **scheduledEventName** : _string_
+: Name of the CloudWatch scheduled event that will perform the regular updates, e.g. _scheduledNissanLeafUpdate_
+* **scheduledEventFunctionArn** : _amazon resource name_
+: Identity of the CloudWatch scheduled event Target containing the event settings, e.g. _arn:aws:lambda:us-east-1:123123123123:function:scheduledNissanLeafUpdate_. You can use the getCloudWatchRuleDetails function to find this information
+* **scheduleEventTargetId** : _string_
+: Id of the CloudWatch scheduled event Target containing the event settings, e.g. _Id123123123123_. You can use the getCloudWatchRuleDetails function to find this information
+
+## Other:
+* **debugLogging** : _boolean_
+: Creates additional logging entries when set to true
