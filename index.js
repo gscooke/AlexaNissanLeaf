@@ -229,8 +229,10 @@ exports.handler = (event, context) => {
 					break;
 			}
 			// Whenever the user interacts with the service, schedule a fast update
-			if (process.env.hasOwnProperty("scheduledEventArn")) {
-				setCloudWatchSchedule(process.env.fastUpdateTime);
+			if (process.env.hasOwnProperty("scheduledEventArn") && event.request.intent.name != "UpdateIntent") {
+				// Perform a data update in 1 minute
+				setCloudWatchSchedule(1);
+				setCloudWatchTrigger(0, 1, 0);
 			}
 		} else if (event.request.type === "SessionEndedRequest") {
 			exitCallback();
@@ -247,18 +249,21 @@ function handleScheduledUpdate(success, battery, event) {
 		console.log(event);
 
 	if (success) {
+		// Default to a fast update - in case car could not communicate for some reason we need to get back to good data
+		let minutesToAdd = process.env.fastUpdateTime;
+		let timesRunInState = 0;
+
 		if (battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount == event.currentBatteryLevel) {
-			let minutesToAdd = event.timesRunInState >= process.env.slowUpdateThreshold ? process.env.dormantUpdateTime : process.env.slowUpdateTime;
+			// Battery state has not changed, set slow or dormant update time
+			minutesToAdd = event.timesRunInState >= process.env.slowUpdateThreshold ? process.env.dormantUpdateTime : process.env.slowUpdateTime;
+			timesRunInState = event.timesRunInState
 
 			if (process.env.debugLogging)
 				console.log("Slow update - minutes to add = " + minutesToAdd);
-
-			setCloudWatchSchedule(minutesToAdd);
-			setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, minutesToAdd, event.timesRunInState);
-		} else {
-			setCloudWatchSchedule(process.env.slowUpdateTime);
-			setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, process.env.fastUpdateTime, 0);
 		}
+
+		setCloudWatchSchedule(minutesToAdd);
+		setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, minutesToAdd, timesRunInState);
 	} else {
 		console.log("Could not get battery state, force fast update");
 		setCloudWatchSchedule(process.env.fastUpdateTime);
