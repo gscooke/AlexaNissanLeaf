@@ -56,6 +56,8 @@ function sendRequest(action, requestData, successCallback, failureCallback) {
 				successCallback(respData && respData.length ? JSON.parse(respData) : null);
 			}else {
 				console.log("Request to " + action + " was not successful");
+				if (failureCallback)
+					failureCallback();
 			}
 		});
 	});
@@ -69,7 +71,7 @@ function sendRequest(action, requestData, successCallback, failureCallback) {
 * 
 * successCallback
 **/
-function login(successCallback) {
+function login(successCallback, failureCallback) {
 	sendRequest("UserLoginRequest.php", 
 	"UserId=" + username +
 	"&initial_app_strings=" + initial_app_strings +
@@ -87,7 +89,7 @@ function login(successCallback) {
 		}
 		successCallback();
 	}, 
-	loginFailureCallback);
+	failureCallback);
 }
 
 /**
@@ -99,7 +101,7 @@ exports.getBatteryStatus = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -112,7 +114,7 @@ exports.sendPreheatCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -125,7 +127,7 @@ exports.sendCoolingCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -138,7 +140,7 @@ exports.sendClimateControlOffCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -151,7 +153,7 @@ exports.sendStartChargingCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -164,7 +166,7 @@ exports.sendUpdateCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
