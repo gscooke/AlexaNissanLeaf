@@ -53,6 +53,8 @@ function sendRequest(action, requestData, successCallback, failureCallback) {
 		resp.on("end", () => {
 			let json = respData && respData.length ? JSON.parse(respData) : null;
 			if (json.status == 200) {
+				if (process.env.debugLogging && respData && respData.length)
+					console.log(json);
 				successCallback(respData && respData.length ? JSON.parse(respData) : null);
 			}else {
 				console.log("Request to " + action + " was not successful");

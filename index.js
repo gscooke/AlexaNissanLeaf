@@ -24,7 +24,16 @@ function buildResponse(output, card, shouldEndSession) {
 function buildBatteryStatus(battery) {
 	console.log(battery);
 	const milesPerMeter = 0.000621371;
-	let response = `You have ${Math.floor((battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount / battery.BatteryStatusRecords.BatteryStatus.BatteryCapacity) * 100)}% battery which will get you approximately ${Math.floor(battery.BatteryStatusRecords.CruisingRangeAcOn * milesPerMeter)} miles. `;
+
+	let batteryPercentage = Math.floor((battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount / battery.BatteryStatusRecords.BatteryStatus.BatteryCapacity) * 100);
+	let range = Math.floor(battery.BatteryStatusRecords.CruisingRangeAcOn * milesPerMeter);
+
+	// Accurate percentage using LeafSpy data
+	if (process.env.leafSpyTotalCapacity && process.env.leafSpyTotalCapacity > 0) {
+		batteryPercentage = Math.floor((battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmountWH / process.env.leafSpyTotalCapacity) * 100);
+	}
+
+	let response = `You have ${batteryPercentage}% battery which will get you approximately ${range} miles. `;
 
 	if (battery.BatteryStatusRecords.BatteryStatus.BatteryChargingStatus != "NOT_CHARGING") {
 		
@@ -253,17 +262,47 @@ function handleScheduledUpdate(success, battery, event) {
 		let minutesToAdd = process.env.fastUpdateTime;
 		let timesRunInState = 0;
 
-		if (battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount == event.currentBatteryLevel) {
-			// Battery state has not changed, set slow or dormant update time
-			minutesToAdd = event.timesRunInState >= process.env.slowUpdateThreshold ? process.env.dormantUpdateTime : process.env.slowUpdateTime;
+		if (battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmountWH == event.currentBatteryLevel) {
+			// Battery state has not changed, work out the schedule
 			timesRunInState = event.timesRunInState
 
+			if (event.interval == process.env.fastUpdateTime) {
+				// If this was a fast update, check how many times it has happened, continue fast updates for 4 cycles
+				if (timesRunInState < 4) {
+					minutesToAdd = process.env.fastUpdateTime;
+					if (process.env.debugLogging)
+						console.log("Still in fast updates loop - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
+				} else {
+					minutesToAdd = process.env.slowUpdateTime;
+					timesRunInState = 0;
+					if (process.env.debugLogging)
+						console.log("Finished fast updates loop - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
+				}
+			} else if (event.interval == process.env.slowUpdateTime) {
+				// If this was a slow update, check how many times it has happened, use controlled update threshold to determine if we should fall to dormant
+				if (timesRunInState < process.env.slowUpdateThreshold) {
+					minutesToAdd = process.env.slowUpdateTime;
+					if (process.env.debugLogging)
+						console.log("Still in slow updates loop - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
+				} else {
+					minutesToAdd = process.env.dormantUpdateTime;
+					timesRunInState = 0;
+					if (process.env.debugLogging)
+						console.log("Finished slow updates loop - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
+				}
+			} else {
+				// Continue dormant requests
+				minutesToAdd = process.env.dormantUpdateTime;
+				if (process.env.debugLogging)
+					console.log("Dormant loop - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
+			}
+		} else {
 			if (process.env.debugLogging)
-				console.log("Slow update - minutes to add = " + minutesToAdd);
+				console.log("Battery status has changed, reset process - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
 		}
 
 		setCloudWatchSchedule(minutesToAdd);
-		setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, minutesToAdd, timesRunInState);
+		setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmountWH, minutesToAdd, timesRunInState);
 	} else {
 		console.log("Could not get battery state, force fast update");
 		setCloudWatchSchedule(process.env.fastUpdateTime);
