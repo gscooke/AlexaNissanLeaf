@@ -262,7 +262,7 @@ function handleScheduledUpdate(success, battery, event) {
 		let minutesToAdd = process.env.fastUpdateTime;
 		let timesRunInState = 0;
 
-		if (battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmountWH == event.currentBatteryLevel) {
+		if (battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount == event.currentBatteryLevel) {
 			// Battery state has not changed, work out the schedule
 			timesRunInState = event.timesRunInState
 
@@ -302,7 +302,7 @@ function handleScheduledUpdate(success, battery, event) {
 		}
 
 		setCloudWatchSchedule(minutesToAdd);
-		setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmountWH, minutesToAdd, timesRunInState);
+		setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, minutesToAdd, timesRunInState);
 	} else {
 		console.log("Could not get battery state, force fast update");
 		setCloudWatchSchedule(process.env.fastUpdateTime);
