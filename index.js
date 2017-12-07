@@ -22,7 +22,8 @@ function buildResponse(output, card, shouldEndSession) {
 
 // Helper to build the text response for range/battery status.
 function buildBatteryStatus(battery) {
-	console.log(battery);
+	if (process.env.debugLogging)
+		console.log(battery);
 	const milesPerMeter = 0.000621371;
 
 	if (battery.BatteryStatusRecords.BatteryStatus.BatteryChargingStatus == 'INVALID') {
@@ -140,7 +141,8 @@ exports.handler = (event, context) => {
 		// Check if this is a CloudWatch scheduled event.
 		// if ((event.source == "aws.events" && event["detail-type"] == "Scheduled Event") || 
 		if (event.mechanism && event.mechanism == 'scheduledUpdate') {
-			console.log(event);
+			if (process.env.debugLogging)
+				console.log(event);
 			// The environment variable scheduledEventArn should have a value as shown in the trigger configuration for this lambda function,
 			// e.g. "arn:aws:events:us-east-1:123123123:rule/scheduledNissanLeafUpdate",
 			if (event.resources && event.resources[0] == process.env.scheduledEventArn)  {
@@ -301,9 +303,8 @@ function handleScheduledUpdate(success, battery, event) {
 				if (process.env.debugLogging)
 					console.log("Dormant loop - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
 			}
-		} else {
-			if (process.env.debugLogging)
-				console.log("Battery status has changed, reset process - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
+		} else if (process.env.debugLogging) {
+			console.log("Battery status has changed, reset process - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
 		}
 
 		setCloudWatchSchedule(minutesToAdd);
@@ -327,7 +328,7 @@ function getCloudWatchRuleDetails() {
         if (err) {
             console.log(err, err.stack);  
         }
-        else {
+        else if(process.env.debugLogging) {
             console.log(data);
         }
 	});
@@ -355,7 +356,7 @@ function setCloudWatchSchedule(minutesToAdd) {
         if (err) {
             console.log(err, err.stack);  
         }
-        else {
+        else if(process.env.debugLogging) {
             console.log(data);
         }
 	});
@@ -395,7 +396,7 @@ function setCloudWatchTrigger(newBatteryState, minutesToAdd, timesRunInState) {
         if (err) {
             console.log(err, err.stack);  
         }
-        else {
+        else if(process.env.debugLogging) {
             console.log(data);
         }
 	})

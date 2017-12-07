@@ -82,4 +82,4 @@ If you have LeafSpy, you can get more accurate data by entering some of the valu
 
 ## Other:
 * **debugLogging** : _boolean_
-: Creates additional logging entries when set to true
+: Creates additional logging entries when set to anything truthy, set to blank or remove if you want to disable
