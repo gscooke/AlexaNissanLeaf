@@ -71,7 +71,7 @@ function buildChargeTimeResponse(hoursToFull, minutesToFull) {
 			response += "s";
 		}
 		if (minutesToFull > 0) {
-			response += " and "
+			response += " and ";
 		}
 	}
 
@@ -236,6 +236,12 @@ exports.handler = (event, context) => {
 						() => sendResponse("Car Battery Condition Status", "Unable to get battery condition status.")
 					);
 					break;
+				case "CloudWatchRuleIntent":
+					getCloudWatchRuleDetails(
+						response => sendResponse("CloudWatch Rules", "Your Cloud Watch rules have been logged."),
+						() => sendResponse("CloudWatch Rules", "Could not get Cloud Watch rule details")
+					);
+					break;
 				case "AMAZON.HelpIntent":
 					helpCallback();
 					break;
@@ -245,7 +251,7 @@ exports.handler = (event, context) => {
 					break;
 			}
 			// Whenever the user interacts with the service, schedule a fast update
-			if (process.env.hasOwnProperty("scheduledEventArn") && event.request.intent.name != "UpdateIntent") {
+			if (process.env.hasOwnProperty("scheduledEventArn") && event.request.intent.name != "UpdateIntent" && event.request.intent.name != "CloudWatchRuleIntent") {
 				// Perform a data update in 1 minute
 				setCloudWatchSchedule(1);
 				setCloudWatchTrigger(0, 1, 0);
@@ -271,7 +277,7 @@ function handleScheduledUpdate(success, battery, event) {
 
 		if (battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount == event.currentBatteryLevel) {
 			// Battery state has not changed, work out the schedule
-			timesRunInState = event.timesRunInState
+			timesRunInState = event.timesRunInState;
 
 			if (event.interval == process.env.fastUpdateTime) {
 				// If this was a fast update, check how many times it has happened, continue fast updates for 4 cycles
@@ -320,16 +326,22 @@ function handleScheduledUpdate(success, battery, event) {
 	);
 }
 
-function getCloudWatchRuleDetails() {
+function getCloudWatchRuleDetails(successCallback, failureCallback) {
+	var cloudwatchevents = new AWS.CloudWatchEvents();
+
 	var ruleParams = {
 		"Rule": process.env.scheduledEventName
 	};
-	cloudwatchevents.listTargetsByRule(ruleParams, function(err, data) {
-        if (err) {
-            console.log(err, err.stack);  
+	var rulePromise = cloudwatchevents.listTargetsByRule(ruleParams).promise();
+	rulePromise.then(function(data) {
+        if (data) {
+			console.log(data);
+			successCallback();
         }
-        else if(process.env.debugLogging) {
-            console.log(data);
+        else {
+			console.log("Request failed");
+			console.log(data);
+			failureCallback();
         }
 	});
 }
@@ -399,7 +411,7 @@ function setCloudWatchTrigger(newBatteryState, minutesToAdd, timesRunInState) {
         else if(process.env.debugLogging) {
             console.log(data);
         }
-	})
+	});
 }
 
 var dateAdd = function(date, interval, units) {

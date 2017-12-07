@@ -43,6 +43,10 @@ The script supports updates via a scheduled event from AWS CloudWatch. I have mo
 To compensate for the increased load on the car, I have also introduced the ability for the script to modify the schedule of the AWS Cloudwatch event so that whenever battery changes are detected, the schedule is kept fast, but if the battery state doesn't change between requests, a slower schedule is used. Once the slow schedule updates have gone past a certain threshold, an even slower schedule is used.
 In order to use this mechanism, two requests are made from Nissan Connect so I have had to increase my Timeout.
 
+When setting up your scheduled event, you will need to configure an input on the Target. Use Constant (Json text) and use the following format:
+`{"mechanism":"scheduledUpdate","currentBatteryLevel":0,"interval":1,"timesRunInState":0,"resources":["arn:aws:events:us-east-1:123123123:rule/scheduledNissanLeafUpdate"]}`
+Ensure you replace the 'resources' value with your arn as defined in **scheduledEvent**.
+
 # Lambda Environment Variables
 These are the environment variables that need to be defined:
 
@@ -70,9 +74,9 @@ These are the environment variables that need to be defined:
 * **scheduledEventName** : _string_
 : Name of the CloudWatch scheduled event that will perform the regular updates, e.g. _scheduledNissanLeafUpdate_
 * **scheduledEventFunctionArn** : _amazon resource name_
-: Identity of the CloudWatch scheduled event Target containing the event settings, e.g. _arn:aws:lambda:us-east-1:123123123123:function:scheduledNissanLeafUpdate_. You can use the getCloudWatchRuleDetails function to find this information
+: Identity of the CloudWatch scheduled event Target containing the event settings, e.g. _arn:aws:lambda:us-east-1:123123123123:function:scheduledNissanLeafUpdate_. You can use the getCloudWatchRuleDetails function to find this information by using the 'Alexa, ask *my car* to log my rules' statement
 * **scheduleEventTargetId** : _string_
-: Id of the CloudWatch scheduled event Target containing the event settings, e.g. _Id123123123123_. You can use the getCloudWatchRuleDetails function to find this information
+: Id of the CloudWatch scheduled event Target containing the event settings, e.g. _Id123123123123_. You can use the getCloudWatchRuleDetails function to find this information by using the 'Alexa, ask *my car* to log my rules' statement
 
 ## Advanced settings:
 If you have LeafSpy, you can get more accurate data by entering some of the values here
