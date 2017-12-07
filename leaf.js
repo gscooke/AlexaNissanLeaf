@@ -14,7 +14,7 @@ let region_code = process.env.regioncode;
 let username = process.env.username; // Your NissanConnect username or email address.
 let password = encrypt(process.env.password); // Your NissanConnect account password.
 
-let sessionid, vin, loginFailureCallback;
+let sessionid, vin, loginFailureCallback, timeFrom;
 
 /**
 * Sends a request to the Nissan API.
@@ -53,9 +53,13 @@ function sendRequest(action, requestData, successCallback, failureCallback) {
 		resp.on("end", () => {
 			let json = respData && respData.length ? JSON.parse(respData) : null;
 			if (json.status == 200) {
+				if (process.env.debugLogging && respData && respData.length)
+					console.log(json);
 				successCallback(respData && respData.length ? JSON.parse(respData) : null);
 			}else {
 				console.log("Request to " + action + " was not successful");
+				if (failureCallback)
+					failureCallback();
 			}
 		});
 	});
@@ -69,7 +73,7 @@ function sendRequest(action, requestData, successCallback, failureCallback) {
 * 
 * successCallback
 **/
-function login(successCallback) {
+function login(successCallback, failureCallback) {
 	sendRequest("UserLoginRequest.php", 
 	"UserId=" + username +
 	"&initial_app_strings=" + initial_app_strings +
@@ -81,13 +85,15 @@ function login(successCallback) {
 		if (loginResponse.VehicleInfoList) {
 			sessionid = encodeURIComponent(loginResponse.VehicleInfoList.vehicleInfo[0].custom_sessionid);
 			vin = encodeURIComponent(loginResponse.VehicleInfoList.vehicleInfo[0].vin);
+			timeFrom = loginResponse.VehicleInfoList.vehicleInfo[0].UserVehicleBoundTime;
 		} else  {
 			sessionid = encodeURIComponent(loginResponse.vehicleInfo[0].custom_sessionid);
-			vin = encodeURIComponent(loginResponse.vehicleInfo[0].vin);			
+			vin = encodeURIComponent(loginResponse.vehicleInfo[0].vin);
+			timeFrom = loginResponse.vehicleInfo[0].UserVehicleBoundTime;		
 		}
 		successCallback();
 	}, 
-	loginFailureCallback);
+	failureCallback);
 }
 
 /**
@@ -99,7 +105,7 @@ exports.getBatteryStatus = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -112,7 +118,7 @@ exports.sendPreheatCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -125,7 +131,7 @@ exports.sendCoolingCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -138,7 +144,7 @@ exports.sendClimateControlOffCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -151,7 +157,7 @@ exports.sendStartChargingCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**
@@ -164,7 +170,7 @@ exports.sendUpdateCommand = (successCallback, failureCallback) => {
 	"&RegionCode=" + region_code +
 	"&VIN=" + vin,
 	successCallback,
-	failureCallback));
+	failureCallback), failureCallback);
 }
 
 /**

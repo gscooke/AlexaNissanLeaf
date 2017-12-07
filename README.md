@@ -74,6 +74,12 @@ These are the environment variables that need to be defined:
 * **scheduleEventTargetId** : _string_
 : Id of the CloudWatch scheduled event Target containing the event settings, e.g. _Id123123123123_. You can use the getCloudWatchRuleDetails function to find this information
 
+## Advanced settings:
+If you have LeafSpy, you can get more accurate data by entering some of the values here
+
+* **leafSpyTotalCapacity** : _number_
+: Total WH battery capacity
+
 ## Other:
 * **debugLogging** : _boolean_
-: Creates additional logging entries when set to true
+: Creates additional logging entries when set to anything truthy, set to blank or remove if you want to disable
