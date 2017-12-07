@@ -10,6 +10,7 @@
     { "intent": "ConnectedIntent" },
     { "intent": "StartChargingIntent" },
     { "intent": "BatteryConditionIntent" },
+    { "intent": "CloudWatchRuleIntent" },
     { "intent": "AMAZON.HelpIntent" },
     { "intent": "AMAZON.CancelIntent" },
     { "intent": "AMAZON.StopIntent" }
