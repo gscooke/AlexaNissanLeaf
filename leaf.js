@@ -14,7 +14,7 @@ let region_code = process.env.regioncode;
 let username = process.env.username; // Your NissanConnect username or email address.
 let password = encrypt(process.env.password); // Your NissanConnect account password.
 
-let sessionid, vin, loginFailureCallback;
+let sessionid, vin, loginFailureCallback, timeFrom;
 
 /**
 * Sends a request to the Nissan API.
@@ -85,9 +85,11 @@ function login(successCallback, failureCallback) {
 		if (loginResponse.VehicleInfoList) {
 			sessionid = encodeURIComponent(loginResponse.VehicleInfoList.vehicleInfo[0].custom_sessionid);
 			vin = encodeURIComponent(loginResponse.VehicleInfoList.vehicleInfo[0].vin);
+			timeFrom = loginResponse.VehicleInfoList.vehicleInfo[0].UserVehicleBoundTime;
 		} else  {
 			sessionid = encodeURIComponent(loginResponse.vehicleInfo[0].custom_sessionid);
-			vin = encodeURIComponent(loginResponse.vehicleInfo[0].vin);			
+			vin = encodeURIComponent(loginResponse.vehicleInfo[0].vin);
+			timeFrom = loginResponse.vehicleInfo[0].UserVehicleBoundTime;		
 		}
 		successCallback();
 	}, 

@@ -25,6 +25,11 @@ function buildBatteryStatus(battery) {
 	console.log(battery);
 	const milesPerMeter = 0.000621371;
 
+	if (battery.BatteryStatusRecords.BatteryStatus.BatteryChargingStatus == 'INVALID') {
+		let operationResult = battery.BatteryStatusRecords.OperationResult;
+		return 'There is a problem with the Nissan Connect service. The response provided was ' + operationResult.replace(/_/g, " ") + '. Please check error logs for details.';
+	}
+
 	let batteryPercentage = Math.floor((battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount / battery.BatteryStatusRecords.BatteryStatus.BatteryCapacity) * 100);
 	let range = Math.floor(battery.BatteryStatusRecords.CruisingRangeAcOn * milesPerMeter);
 
