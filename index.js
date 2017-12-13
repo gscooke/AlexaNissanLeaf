@@ -5,6 +5,12 @@ var AWS = require("aws-sdk");
 // Require the leaf.js file with specific vehicle functions.
 let car = require("./leaf");
 
+// Constants
+let scheduleType_Regular = 'scheduledUpdate';
+let scheduleType_Battery = 'scheduledBatteryCheck';
+let schedule_gap = 3;
+let schedule_startTime = new Date().getTime();
+
 // Build a response to send back to Alexa.
 function buildResponse(output, card, shouldEndSession) {
 	return {
@@ -140,19 +146,33 @@ exports.handler = (event, context) => {
 	try {
 		// Check if this is a CloudWatch scheduled event.
 		// if ((event.source == "aws.events" && event["detail-type"] == "Scheduled Event") || 
-		if (event.mechanism && event.mechanism == 'scheduledUpdate') {
+		if (event.mechanism) {
 			if (process.env.debugLogging)
 				console.log(event);
 			// The environment variable scheduledEventArn should have a value as shown in the trigger configuration for this lambda function,
 			// e.g. "arn:aws:events:us-east-1:123123123:rule/scheduledNissanLeafUpdate",
 			if (event.resources && event.resources[0] == process.env.scheduledEventArn)  {
-				console.log("Beginning scheduled update");
-				// Update the schedule
-				car.getBatteryStatus(
-					response => handleScheduledUpdate(true, response, event),
-					() => handleScheduledUpdate(false, null, event)
-				);
-				return;
+				schedule_startTime = new Date().getTime();
+				switch (event.mechanism) { // TODO: Set these to constants as they are needed elsewhere in the code
+					case scheduleType_Regular:
+						console.log("Beginning scheduled update");
+						// Update the schedule
+						car.sendUpdateCommand(
+							response => handleScheduledUpdate(true, event),
+							() => handleScheduledUpdate(false, event)
+						);
+						return;
+						break;
+					case scheduleType_Battery:
+						console.log("Beginning battery check");
+						// Check the battery
+						car.getBatteryStatus(
+							response => handleScheduledBatteryUpdate(true, response, event),
+							() => handleScheduledBatteryUpdate(false, null, event)
+						);
+						return;
+						break;
+				}
 			}
 			sendResponse("Invalid Scheduled Event", "This service is not configured to allow the source of this scheduled event.");
 			return;
@@ -250,11 +270,11 @@ exports.handler = (event, context) => {
 					exitCallback();
 					break;
 			}
-			// Whenever the user interacts with the service, schedule a fast update
-			if (process.env.hasOwnProperty("scheduledEventArn") && event.request.intent.name != "UpdateIntent" && event.request.intent.name != "CloudWatchRuleIntent") {
-				// Perform a data update in 1 minute
-				setCloudWatchSchedule(1);
-				setCloudWatchTrigger(0, 1, 0);
+			// Whenever the user interacts with the service, schedule a quick update to see if battery state has changed
+			if (process.env.hasOwnProperty("scheduledEventArn") && event.request.intent.name != "UpdateIntent") {
+				// Perform a data refresh
+				setCloudWatchSchedule(schedule_gap);
+				setCloudWatchTrigger(scheduleType_Regular, 0, schedule_gap, 0);
 			}
 		} else if (event.request.type === "SessionEndedRequest") {
 			exitCallback();
@@ -266,7 +286,26 @@ exports.handler = (event, context) => {
 	}
 };
 
-function handleScheduledUpdate(success, battery, event) {
+function handleScheduledUpdate(success, event) {
+	if (process.env.debugLogging)
+		console.log(event);
+
+	if (success) {
+		// An update from the car has been requested, wait a few minutes for an updated response
+		setCloudWatchSchedule(schedule_gap, schedule_startTime);
+		setCloudWatchTrigger(scheduleType_Battery, event.currentBatteryLevel, event.interval, event.timesRunInState - 1);
+		
+		if (process.env.debugLogging)
+			console.log("Battery Update requested from car, wait " + schedule_gap + " minutes");
+	} else {
+		console.log("Battery Update request failed, force fast update");
+		setCloudWatchSchedule(process.env.fastUpdateTime);
+	}
+
+	console.log("Finished scheduled update");
+}
+
+function handleScheduledBatteryUpdate(success, battery, event) {
 	if (process.env.debugLogging)
 		console.log(event);
 
@@ -313,17 +352,15 @@ function handleScheduledUpdate(success, battery, event) {
 			console.log("Battery status has changed, reset process - minutes to add = " + minutesToAdd + ", times run = " + timesRunInState);
 		}
 
-		setCloudWatchSchedule(minutesToAdd);
-		setCloudWatchTrigger(battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, minutesToAdd, timesRunInState);
+		setCloudWatchSchedule(minutesToAdd, event.startTime);
+		setCloudWatchTrigger(scheduleType_Regular, battery.BatteryStatusRecords.BatteryStatus.BatteryRemainingAmount, minutesToAdd, timesRunInState);
 	} else {
 		console.log("Could not get battery state, force fast update");
 		setCloudWatchSchedule(process.env.fastUpdateTime);
+		setCloudWatchTrigger(scheduleType_Regular, event.currentBatteryLevel, process.env.fastUpdateTime, event.timesRunInState);
 	}
 
-	car.sendUpdateCommand(
-		() => console.log("Finished Scheduled Update"),
-		() => console.log("Scheduled battery update failed")
-	);
+	console.log("Finished battery check");
 }
 
 function getCloudWatchRuleDetails(successCallback, failureCallback) {
@@ -346,9 +383,13 @@ function getCloudWatchRuleDetails(successCallback, failureCallback) {
 	});
 }
 
-function setCloudWatchSchedule(minutesToAdd) {
+function setCloudWatchSchedule(minutesToAdd, startTime) {
 	var cloudwatchevents = new AWS.CloudWatchEvents();
 	var currentTime = new Date().getTime(); // UTC Time
+
+	if (startTime)
+		currentTime = startTime;
+
 	var nextTime = dateAdd(currentTime, "minute", minutesToAdd);
 	var nextMinutes = nextTime.getMinutes();
 	var nextHours = nextTime.getHours();
@@ -368,26 +409,27 @@ function setCloudWatchSchedule(minutesToAdd) {
         if (err) {
             console.log(err, err.stack);  
         }
-        else if(process.env.debugLogging) {
+        else {
             console.log(data);
         }
 	});
 }
 
-function setCloudWatchTrigger(newBatteryState, minutesToAdd, timesRunInState) {
+function setCloudWatchTrigger(scheduleEventType, newBatteryState, minutesToAdd, timesRunInState) {
 	var cloudwatchevents = new AWS.CloudWatchEvents();
 
 	timesRunInState += 1;
 
 	// Build the new trigger
 	var inputTrigger = {
-		mechanism: "scheduledUpdate",
+		mechanism: scheduleEventType,
 		currentBatteryLevel: newBatteryState,
 		interval: minutesToAdd,
 		timesRunInState: timesRunInState,
 		resources: [
 			process.env.scheduledEventArn
-		]
+		],
+		startTime: schedule_startTime
 	};
 
 	var params = {
@@ -408,10 +450,10 @@ function setCloudWatchTrigger(newBatteryState, minutesToAdd, timesRunInState) {
         if (err) {
             console.log(err, err.stack);  
         }
-        else if(process.env.debugLogging) {
+        else {
             console.log(data);
         }
-	});
+	})
 }
 
 var dateAdd = function(date, interval, units) {
